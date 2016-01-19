@@ -1,6 +1,9 @@
 #!bin/python
 ''' xxx '''
 import json
+from io import BytesIO
+from argparse import ArgumentParser
+from os import path
 from base64 import b64encode
 from base64 import b64decode
 from nacl.encoding import HexEncoder
@@ -11,9 +14,6 @@ from nacl.public import Box
 from nacl.utils import random
 from nacl.secret import SecretBox
 import pycurl
-from io import BytesIO
-from argparse import ArgumentParser
-from os import path
 
 def register(username, enc_master_verify_key):
     ''' xxx '''
@@ -45,7 +45,8 @@ def add_device(username, enc_signed_device_verify_key, enc_signed_device_public_
 
 def get_recipient_keys(username, enc_signed_destination_username):
 
-    data = json.dumps({"username": username, "destination_username": enc_signed_destination_username })
+    data = json.dumps({"username": username,
+                       "destination_username": enc_signed_destination_username})
 
     register_url = "http://localhost:5000/api/v1.0/get-device-key"
 
@@ -67,9 +68,12 @@ def get_recipient_keys(username, enc_signed_destination_username):
 
     return recipient_keys
 
-def send_message(username, enc_signed_destination_usernames, enc_signed_crypt_msg, enc_signed_ephemeral_public_key):
+def send_message(username, destination_usernames, message_contents, message_public_key):
 
-    data = json.dumps({"username": username, "destination_usernames": enc_signed_destination_usernames, "message_contents": enc_signed_crypt_msg, "message_public_key": enc_signed_ephemeral_public_key })
+    data = json.dumps({"username": username,
+                       "destination_usernames": destination_usernames,
+                       "message_contents": message_contents,
+                       "message_public_key": message_public_key})
 
     register_url = "http://localhost:5000/api/v1.0/send-message"
 
@@ -82,7 +86,8 @@ def send_message(username, enc_signed_destination_usernames, enc_signed_crypt_ms
 
 def get_messages(username, enc_signed_device_verify_key):
 
-    data = json.dumps({"username": username, "signed_device_verify_key": enc_signed_device_verify_key })
+    data = json.dumps({"username": username,
+                       "signed_device_verify_key": enc_signed_device_verify_key})
 
     register_url = "http://localhost:5000/api/v1.0/get-messages"
 
@@ -94,18 +99,18 @@ def get_messages(username, enc_signed_device_verify_key):
     output = BytesIO()
     curl.setopt(curl.WRITEFUNCTION, output.write)
     curl.perform()
-    
+
     return json.loads(output.getvalue())
 
 def save_key(key, filename):
-    f = open(filename, 'w')
-    f.write(key)
-    f.close()
+    key_file = open(filename, 'w')
+    key_file.write(key)
+    key_file.close()
 
 def load_key(filename):
-    f = open(filename, 'r')
-    key = f.read()
-    f.close ()
+    key_file = open(filename, 'r')
+    key = key_file.read()
+    key_file.close()
     return key
 
 def init():
@@ -139,9 +144,15 @@ def init():
 
     else:
         try:
-            master_signing_key = SigningKey(load_key(keydir+"/master_signing_key"), encoder=HexEncoder)
-            device_signing_key = SigningKey(load_key(keydir+"/device_signing_key"), encoder=HexEncoder)
-            device_private_key = PrivateKey(load_key(keydir+"/device_private_key"), encoder=HexEncoder)
+            master_signing_key = SigningKey(
+                load_key(keydir+"/master_signing_key"),
+                encoder=HexEncoder)
+            device_signing_key = SigningKey(
+                load_key(keydir+"/device_signing_key"),
+                encoder=HexEncoder)
+            device_private_key = PrivateKey(
+                load_key(keydir+"/device_private_key"),
+                encoder=HexEncoder)
         except TypeError:
             print "bad key, exiting."
             exit()
@@ -159,11 +170,15 @@ def init():
         if action == "send-message":
 
             ephemeral_key = PrivateKey.generate()
-            enc_signed_ephemeral_public_key = b64encode(device_signing_key.sign(ephemeral_key.public_key.encode(encoder=HexEncoder)))
+            enc_ephemeral_public_key = b64encode(
+                device_signing_key.sign(
+                    ephemeral_key.public_key.encode(encoder=HexEncoder)))
 
             #TODO:: should sign binary text, no? b"bob"
             destination_usernames = ["bob"]
-            enc_signed_destination_usernames = b64encode(device_signing_key.sign(json.dumps({"destination_usernames": destination_usernames})))
+            enc_dest_usernames = b64encode(
+                device_signing_key.sign(
+                    json.dumps({"destination_usernames": destination_usernames})))
             message = b"haa hello world"
             symmetric_key = random(SecretBox.KEY_SIZE)
             symmetric_box = SecretBox(symmetric_key)
@@ -172,19 +187,27 @@ def init():
             msg_manifest['recipients'] = {}
             msg_manifest['msg'] = b64encode(symmetric_box.encrypt(message, nonce))
 
-            for destination_username in destination_usernames:
-                msg_manifest['recipients'][destination_username] = {}
+            for dest_user in destination_usernames:
+                msg_manifest['recipients'][dest_user] = {}
 
-                for recipient_key in get_recipient_keys(username, b64encode(device_signing_key.sign(destination_username))):
+                for recipient_key in get_recipient_keys(username,
+                                                        b64encode(
+                                                            device_signing_key.sign(
+                                                                dest_user))):
 
                     #TODO:: should sign binary text, no?
                     crypt_box = Box(ephemeral_key, recipient_key)
                     nonce = random(Box.NONCE_SIZE)
                     crypt_key = b64encode(crypt_box.encrypt(symmetric_key, nonce))
-                    msg_manifest['recipients'][destination_username][recipient_key.encode(encoder=HexEncoder)] = crypt_key
+                    dest_key = recipient_key.encode(encoder=HexEncoder)
+                    msg_manifest['recipients'][dest_user][dest_key] = crypt_key
 
             enc_signed_crypt_msg = b64encode(device_signing_key.sign(json.dumps(msg_manifest)))
-            send_message(username, enc_signed_destination_usernames, enc_signed_crypt_msg, enc_signed_ephemeral_public_key)
+
+            send_message(username,
+                         enc_dest_usernames,
+                         enc_signed_crypt_msg,
+                         enc_ephemeral_public_key)
 
         if action == "get-messages":
 
@@ -194,12 +217,16 @@ def init():
 
             for message_public_key in messages['messages'].keys():
                 try:
-                    crypto_box = Box(device_private_key, PublicKey(b64decode(message_public_key), encoder=HexEncoder))
+                    crypto_box = Box(device_private_key,
+                                     PublicKey(b64decode(message_public_key), encoder=HexEncoder))
                 except TypeError:
                     print "not a valid public key"
                     exit()
                 msg_manifest = json.loads(b64decode(messages['messages'][message_public_key]))
-                symmetric_key = crypto_box.decrypt(b64decode(msg_manifest['recipients'][username][device_private_key.public_key.encode(encoder=HexEncoder)]))
+                dest_pub_key = device_private_key.public_key.encode(encoder=HexEncoder)
+                symmetric_key = crypto_box.decrypt(
+                    b64decode(
+                        msg_manifest['recipients'][username][dest_pub_key]))
                 symmetric_box = SecretBox(symmetric_key)
                 print symmetric_box.decrypt(b64decode(msg_manifest['msg']))
 
