@@ -19,7 +19,7 @@ def register(username, enc_master_verify_key):
     ''' xxx '''
 
     data = json.dumps({"username": username, "master_verify_key": enc_master_verify_key})
-    register_url = "http://localhost:5000/api/v1.0/register"
+    register_url = "http://localhost:5000/api/v1.0/user"
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, register_url)
@@ -34,7 +34,7 @@ def add_device(username, enc_signed_device_verify_key, enc_signed_device_public_
                        "device_verify_key": enc_signed_device_verify_key,
                        "device_public_key": enc_signed_device_public_key})
 
-    register_url = "http://localhost:5000/api/v1.0/add-device"
+    register_url = "http://localhost:5000/api/v1.0/device"
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, register_url)
@@ -48,7 +48,7 @@ def get_recipient_keys(username, enc_signed_destination_username):
     data = json.dumps({"username": username,
                        "destination_username": enc_signed_destination_username})
 
-    register_url = "http://localhost:5000/api/v1.0/get-device-key"
+    register_url = "http://localhost:5000/api/v1.0/keylist"
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, register_url)
@@ -75,7 +75,7 @@ def send_message(username, destination_usernames, message_contents, message_publ
                        "message_contents": message_contents,
                        "message_public_key": message_public_key})
 
-    register_url = "http://localhost:5000/api/v1.0/send-message"
+    register_url = "http://localhost:5000/api/v1.0/message"
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, register_url)
@@ -89,7 +89,7 @@ def get_messages(username, enc_signed_device_verify_key):
     data = json.dumps({"username": username,
                        "signed_device_verify_key": enc_signed_device_verify_key})
 
-    register_url = "http://localhost:5000/api/v1.0/get-messages"
+    register_url = "http://localhost:5000/api/v1.0/messagelist"
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, register_url)
