@@ -43,9 +43,9 @@ def add_device(username, enc_signed_device_verify_key, enc_signed_device_public_
     curl.setopt(pycurl.POSTFIELDS, data)
     curl.perform()
 
-def get_recipient_keys(username, enc_signed_destination_username):
+def get_recipient_keys(device_verify_key, enc_signed_destination_username):
 
-    data = json.dumps({"username": username,
+    data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_username": enc_signed_destination_username})
 
     register_url = "http://localhost:5000/api/v1.0/keylist"
@@ -68,9 +68,9 @@ def get_recipient_keys(username, enc_signed_destination_username):
 
     return recipient_keys
 
-def send_message(username, destination_usernames, message_contents, message_public_key):
+def send_message(device_verify_key, destination_usernames, message_contents, message_public_key):
 
-    data = json.dumps({"username": username,
+    data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_usernames": destination_usernames,
                        "message_contents": message_contents,
                        "message_public_key": message_public_key})
@@ -84,9 +84,9 @@ def send_message(username, destination_usernames, message_contents, message_publ
     curl.setopt(pycurl.POSTFIELDS, data)
     curl.perform()
 
-def get_messages(username, enc_signed_device_verify_key):
+def get_messages(device_verify_key, enc_signed_device_verify_key):
 
-    data = json.dumps({"username": username,
+    data = json.dumps({"device_verify_key": device_verify_key,
                        "signed_device_verify_key": enc_signed_device_verify_key})
 
     register_url = "http://localhost:5000/api/v1.0/messagelist"
@@ -190,7 +190,7 @@ def init():
             for dest_user in destination_usernames:
                 msg_manifest['recipients'][dest_user] = {}
 
-                for recipient_key in get_recipient_keys(username,
+                for recipient_key in get_recipient_keys(device_signing_key.verify_key.encode(encoder=HexEncoder),
                                                         b64encode(
                                                             device_signing_key.sign(
                                                                 dest_user))):
@@ -204,7 +204,7 @@ def init():
 
             enc_signed_crypt_msg = b64encode(device_signing_key.sign(json.dumps(msg_manifest)))
 
-            send_message(username,
+            send_message(device_signing_key.verify_key.encode(encoder=HexEncoder),
                          enc_dest_usernames,
                          enc_signed_crypt_msg,
                          enc_ephemeral_public_key)
@@ -213,7 +213,7 @@ def init():
 
             enc_device_verify_key = device_signing_key.verify_key.encode(encoder=HexEncoder)
             enc_signed_device_verify_key = b64encode(device_signing_key.sign(enc_device_verify_key))
-            messages = get_messages(username, enc_signed_device_verify_key)
+            messages = get_messages(enc_device_verify_key, enc_signed_device_verify_key)
 
             for message_public_key in messages['messages'].keys():
                 try:
