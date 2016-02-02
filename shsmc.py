@@ -14,6 +14,7 @@ from nacl.public import Box
 from nacl.utils import random
 from nacl.secret import SecretBox
 import pycurl
+import click
 
 def register(username, enc_master_verify_key):
     ''' xxx '''
@@ -113,20 +114,15 @@ def load_key(filename):
     key_file.close()
     return key
 
-def init():
-    ''' xxx '''
+@click.command()
+@click.option('--username', required=True)
+@click.option('--keydir', required=True)
+@click.option('--action', required=True)
+@click.option('--message')
+@click.option('--recipients')
 
-
-    parser = ArgumentParser(description='SHSM CLI client.')
-    parser.add_argument('username', type=str)
-    parser.add_argument('keydir', type=str)
-    parser.add_argument('action', type=str)
-
-    args = parser.parse_args()
-
-    username = args.username
-    keydir = args.keydir
-    action = args.action
+def init(username, keydir, action, message, recipients):
+    ''' SHSM CLI client. '''
 
     if action == "register":
         master_signing_key = SigningKey.generate()
@@ -175,17 +171,16 @@ def init():
                     ephemeral_key.public_key.encode(encoder=HexEncoder)))
 
             #TODO:: should sign binary text, no? b"bob"
-            destination_usernames = ["bob"]
+            destination_usernames = recipients.split(",")
             enc_dest_usernames = b64encode(
                 device_signing_key.sign(
                     json.dumps({"destination_usernames": destination_usernames})))
-            message = b"haa hello world"
             symmetric_key = random(SecretBox.KEY_SIZE)
             symmetric_box = SecretBox(symmetric_key)
             nonce = random(SecretBox.NONCE_SIZE)
             msg_manifest = {}
             msg_manifest['recipients'] = {}
-            msg_manifest['msg'] = b64encode(symmetric_box.encrypt(message, nonce))
+            msg_manifest['msg'] = b64encode(symmetric_box.encrypt(str(message), nonce))
 
             for dest_user in destination_usernames:
                 msg_manifest['recipients'][dest_user] = {}
@@ -193,7 +188,7 @@ def init():
                 for recipient_key in get_recipient_keys(device_signing_key.verify_key.encode(encoder=HexEncoder),
                                                         b64encode(
                                                             device_signing_key.sign(
-                                                                dest_user))):
+                                                                str(dest_user)))):
 
                     #TODO:: should sign binary text, no?
                     crypt_box = Box(ephemeral_key, recipient_key)

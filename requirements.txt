@@ -1,5 +1,6 @@
 astroid==1.4.4
 cffi==1.5.0
+click==6.2
 colorama==0.3.6
 lazy-object-proxy==1.2.1
 pycparser==2.14
