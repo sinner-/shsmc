@@ -8,8 +8,6 @@ This is my attempt to find out!
 
 This repository contains a very crude (STILL IN EARLY DEVELOPMENT) CLI client.
 
-Everything is hardcoded, don't use this.
-
 ## Installation
 
 ### Install necessary OS packages:
@@ -26,7 +24,7 @@ Everything is hardcoded, don't use this.
   * (from inside shsmc directory)
   * `source bin/activate`
   * `mkdir client_keys`
-  * `bin/python shsmc.py testuser client_keys register`
-  * `bin/python shsmc.py testuser client_keys add-device`
-  * `bin/python shsmc.py testuser client_keys send-message`
-  * `bin/python shsmc.py testuser client_keys get-messages`
+  * `bin/python shsmc.py --username testuser --keydir client_keys --action register`
+  * `bin/python shsmc.py --username testuser --keydir client_keys --action add-device`
+  * `bin/python shsmc.py --username testuser --keydir client_keys --action send-message --message "test message foo" --recipients recipient1,recipient2`
+  * `bin/python shsmc.py --username testuser --keydir client_keys --action get-messages`
