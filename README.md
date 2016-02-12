@@ -24,7 +24,7 @@ This repository contains a very crude (STILL IN EARLY DEVELOPMENT) CLI client.
   * (from inside shsmc directory)
   * `source bin/activate`
   * `mkdir client_keys`
-  * `bin/python shsmc.py --username testuser --keydir client_keys --action register`
-  * `bin/python shsmc.py --username testuser --keydir client_keys --action add-device`
-  * `bin/python shsmc.py --username testuser --keydir client_keys --action send-message --message "test message foo" --recipients recipient1,recipient2`
-  * `bin/python shsmc.py --username testuser --keydir client_keys --action get-messages`
+  * `bin/python shsmc.py --server "http://localhost:5000" --username testuser --keydir client_keys --action register`
+  * `bin/python shsmc.py --server "http://localhost:5000" --username testuser --keydir client_keys --action add-device`
+  * `bin/python shsmc.py --server "http://localhost:5000" --username testuser --keydir client_keys --action send-message --message "test message foo" --recipients recipient1,recipient2`
+  * `bin/python shsmc.py --server "http://localhost:5000" --username testuser --keydir client_keys --action get-messages`

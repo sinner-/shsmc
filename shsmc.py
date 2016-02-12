@@ -20,10 +20,10 @@ def register(username, enc_master_verify_key):
     ''' xxx '''
 
     data = json.dumps({"username": username, "master_verify_key": enc_master_verify_key})
-    register_url = "http://localhost:5000/api/v1.0/user"
+    url = "%s/api/v1.0/user" % serverurl
 
     curl = pycurl.Curl()
-    curl.setopt(curl.URL, register_url)
+    curl.setopt(curl.URL, url)
     curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
     curl.setopt(pycurl.POST, 1)
     curl.setopt(pycurl.POSTFIELDS, data)
@@ -35,10 +35,10 @@ def add_device(username, enc_signed_device_verify_key, enc_signed_device_public_
                        "device_verify_key": enc_signed_device_verify_key,
                        "device_public_key": enc_signed_device_public_key})
 
-    register_url = "http://localhost:5000/api/v1.0/device"
+    url = "%s/api/v1.0/device" % serverurl
 
     curl = pycurl.Curl()
-    curl.setopt(curl.URL, register_url)
+    curl.setopt(curl.URL, url)
     curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
     curl.setopt(pycurl.POST, 1)
     curl.setopt(pycurl.POSTFIELDS, data)
@@ -49,10 +49,10 @@ def get_recipient_keys(device_verify_key, enc_signed_destination_username):
     data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_username": enc_signed_destination_username})
 
-    register_url = "http://localhost:5000/api/v1.0/keylist"
+    url = "%s/api/v1.0/keylist" % serverurl
 
     curl = pycurl.Curl()
-    curl.setopt(curl.URL, register_url)
+    curl.setopt(curl.URL, url)
     curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
     curl.setopt(pycurl.POST, 1)
     curl.setopt(pycurl.POSTFIELDS, data)
@@ -76,10 +76,10 @@ def send_message(device_verify_key, destination_usernames, message_contents, mes
                        "message_contents": message_contents,
                        "message_public_key": message_public_key})
 
-    register_url = "http://localhost:5000/api/v1.0/message"
+    url = "%s/api/v1.0/message" % serverurl
 
     curl = pycurl.Curl()
-    curl.setopt(curl.URL, register_url)
+    curl.setopt(curl.URL, url)
     curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
     curl.setopt(pycurl.POST, 1)
     curl.setopt(pycurl.POSTFIELDS, data)
@@ -90,10 +90,10 @@ def get_messages(device_verify_key, enc_signed_device_verify_key):
     data = json.dumps({"device_verify_key": device_verify_key,
                        "signed_device_verify_key": enc_signed_device_verify_key})
 
-    register_url = "http://localhost:5000/api/v1.0/messagelist"
+    url = "%s/api/v1.0/messagelist" % serverurl
 
     curl = pycurl.Curl()
-    curl.setopt(curl.URL, register_url)
+    curl.setopt(curl.URL, url)
     curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
     curl.setopt(pycurl.POST, 1)
     curl.setopt(pycurl.POSTFIELDS, data)
@@ -115,14 +115,18 @@ def load_key(filename):
     return key
 
 @click.command()
+@click.option('--server', required=True)
 @click.option('--username', required=True)
 @click.option('--keydir', required=True)
 @click.option('--action', required=True)
 @click.option('--message')
 @click.option('--recipients')
 
-def init(username, keydir, action, message, recipients):
+def init(server, username, keydir, action, message, recipients):
     ''' SHSM CLI client. '''
+
+    global serverurl
+    serverurl = server
 
     if action == "register":
         master_signing_key = SigningKey.generate()
