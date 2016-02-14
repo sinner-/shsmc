@@ -18,6 +18,7 @@ This repository contains a very crude (STILL IN EARLY DEVELOPMENT) CLI client.
   * `git clone https://github.com/sinner-/shsmc`
   * `virtualenv -p /usr/bin/python2.7 shsmc`
   * `cd shsmc`
+  * `source bin/activate`
   * `pip install -r requirements.txt`
 
 ### Standalone client (development only)
