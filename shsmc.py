@@ -221,13 +221,14 @@ def init(server, username, keydir, action, message, recipients):
                 except TypeError:
                     print "not a valid public key"
                     exit()
-                msg_manifest = json.loads(b64decode(messages['messages'][message_public_key]))
+                packed_msg = json.loads(messages['messages'][message_public_key])
+                msg_manifest = json.loads(b64decode(packed_msg['message_manifest']))
                 dest_pub_key = device_private_key.public_key.encode(encoder=HexEncoder)
                 symmetric_key = crypto_box.decrypt(
                     b64decode(
                         msg_manifest['recipients'][username][dest_pub_key]))
                 symmetric_box = SecretBox(symmetric_key)
-                print symmetric_box.decrypt(b64decode(msg_manifest['msg']))
+                print ('From: %s\nMessage: %s') % (packed_msg['reply_to'], symmetric_box.decrypt(b64decode(msg_manifest['msg'])))
 
 if __name__ == '__main__':
     init()
