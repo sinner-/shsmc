@@ -178,7 +178,7 @@ def init(server, username, keydir, action, message, recipients):
             destination_usernames = recipients.split(",")
             enc_dest_usernames = b64encode(
                 device_signing_key.sign(
-                    json.dumps({"destination_usernames": destination_usernames})))
+                    json.dumps(destination_usernames)))
             symmetric_key = random(SecretBox.KEY_SIZE)
             symmetric_box = SecretBox(symmetric_key)
             nonce = random(SecretBox.NONCE_SIZE)
