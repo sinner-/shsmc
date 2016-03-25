@@ -85,10 +85,9 @@ def send_message(device_verify_key, destination_usernames, message_contents, mes
     curl.setopt(pycurl.POSTFIELDS, data)
     curl.perform()
 
-def get_messages(device_verify_key, enc_signed_device_verify_key):
+def get_messages(enc_signed_device_verify_key):
 
-    data = json.dumps({"device_verify_key": device_verify_key,
-                       "signed_device_verify_key": enc_signed_device_verify_key})
+    data = json.dumps({"signed_device_verify_key": enc_signed_device_verify_key})
 
     url = "%s/api/v1.0/messagelist" % serverurl
 
@@ -212,7 +211,7 @@ def init(server, username, keydir, action, message, recipients):
 
             enc_device_verify_key = device_signing_key.verify_key.encode(encoder=HexEncoder)
             enc_signed_device_verify_key = b64encode(device_signing_key.sign(enc_device_verify_key))
-            messages = get_messages(enc_device_verify_key, enc_signed_device_verify_key)
+            messages = get_messages(enc_signed_device_verify_key)
 
             for message_public_key in messages['messages'].keys():
                 try:
