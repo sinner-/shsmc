@@ -54,13 +54,26 @@ def register(username, enc_master_verify_key):
     curl.setopt(pycurl.POSTFIELDS, data)
     curl.perform()
 
-def add_device(username, enc_signed_device_verify_key, enc_signed_device_public_key):
+def add_device(username, enc_signed_device_verify_key):
 
     data = json.dumps({"username": username,
-                       "device_verify_key": enc_signed_device_verify_key,
-                       "device_public_key": enc_signed_device_public_key})
+                       "device_verify_key": enc_signed_device_verify_key})
 
     url = "%s/api/v1.0/device" % serverurl
+
+    curl = pycurl.Curl()
+    curl.setopt(curl.URL, url)
+    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
+    curl.setopt(pycurl.POST, 1)
+    curl.setopt(pycurl.POSTFIELDS, data)
+    curl.perform()
+
+def add_key(enc_signed_device_verify_key, enc_signed_device_public_key):
+
+    data = json.dumps({"device_verify_key": enc_signed_device_verify_key,
+                       "device_public_key": enc_signed_device_public_key})
+
+    url = "%s/api/v1.0/key" % serverurl
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, url)
@@ -211,10 +224,16 @@ def init(server, username, keydir, action, message, recipients):
             enc_device_verify_key = device_signing_key.verify_key.encode(encoder=HexEncoder)
             enc_signed_device_verify_key = b64encode(master_signing_key.sign(enc_device_verify_key))
 
+            add_device(username, enc_signed_device_verify_key)
+
+        if action == "add-key":
+
+            enc_device_verify_key = device_signing_key.verify_key.encode(encoder=HexEncoder)
+
             enc_device_public_key = device_private_key.public_key.encode(encoder=HexEncoder)
             enc_signed_device_public_key = b64encode(device_signing_key.sign(enc_device_public_key))
 
-            add_device(username, enc_signed_device_verify_key, enc_signed_device_public_key)
+            add_key(enc_device_verify_key, enc_signed_device_public_key)
 
         if action == "send-message":
 
