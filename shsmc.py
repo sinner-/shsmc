@@ -7,14 +7,39 @@ from os import path
 from base64 import b64encode
 from base64 import b64decode
 from nacl.encoding import HexEncoder
+from nacl.encoding import RawEncoder
 from nacl.signing import SigningKey
+from nacl.signing import VerifyKey
+from nacl.signing import SignedMessage
 from nacl.public import PrivateKey
 from nacl.public import PublicKey
 from nacl.public import Box
 from nacl.utils import random
 from nacl.secret import SecretBox
+import nacl.utils
 import pycurl
 import click
+
+def reconstruct_signed_message(signed_message):
+    """ hacky method for reconstructing signed messages as
+        a PyNaCl SignedMessage object.
+    """
+
+    tmp_encoder = RawEncoder
+    try:
+        tmp_signed_message = tmp_encoder.encode(b64decode(signed_message))
+        recon_signed_message = SignedMessage._from_parts(
+            tmp_encoder.encode(
+                tmp_signed_message[:nacl.bindings.crypto_sign_BYTES]),
+            tmp_encoder.encode(
+                tmp_signed_message[nacl.bindings.crypto_sign_BYTES:]),
+            tmp_signed_message)
+    except TypeError:
+        print "Not a valid signed message."
+
+    return recon_signed_message
+
+
 
 def register(username, enc_master_verify_key):
     ''' xxx '''
@@ -62,9 +87,34 @@ def get_recipient_keys(device_verify_key, enc_signed_destination_username):
     recipient_keys = []
     try:
         for key in json.loads(output.getvalue())['device_public_keys']:
-            recipient_keys.append(PublicKey(key, encoder=HexEncoder))
+            recipient_keys.append(PublicKey(reconstruct_signed_message(key).message, encoder=HexEncoder))
     except TypeError:
         print "bad recipient key, exiting"
+        exit()
+
+    return recipient_keys
+
+def get_device_keys(device_verify_key, enc_signed_destination_username):
+
+    data = json.dumps({"device_verify_key": device_verify_key,
+                       "destination_username": enc_signed_destination_username})
+
+    url = "%s/api/v1.0/keylist" % serverurl
+
+    curl = pycurl.Curl()
+    curl.setopt(curl.URL, url)
+    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
+    curl.setopt(pycurl.POST, 1)
+    curl.setopt(pycurl.POSTFIELDS, data)
+    output = BytesIO()
+    curl.setopt(curl.WRITEFUNCTION, output.write)
+    curl.perform()
+    recipient_keys = []
+    try:
+        for key in json.loads(output.getvalue())['device_verify_keys']:
+            recipient_keys.append(VerifyKey(reconstruct_signed_message(key).message, encoder=HexEncoder))
+    except TypeError:
+        print "bad device key, exiting"
         exit()
 
     return recipient_keys
@@ -162,7 +212,7 @@ def init(server, username, keydir, action, message, recipients):
             enc_signed_device_verify_key = b64encode(master_signing_key.sign(enc_device_verify_key))
 
             enc_device_public_key = device_private_key.public_key.encode(encoder=HexEncoder)
-            enc_signed_device_public_key = b64encode(master_signing_key.sign(enc_device_public_key))
+            enc_signed_device_public_key = b64encode(device_signing_key.sign(enc_device_public_key))
 
             add_device(username, enc_signed_device_verify_key, enc_signed_device_public_key)
 
@@ -186,6 +236,7 @@ def init(server, username, keydir, action, message, recipients):
             msg_manifest['msg'] = b64encode(symmetric_box.encrypt(str(message), nonce))
 
             for dest_user in destination_usernames:
+
                 msg_manifest['recipients'][dest_user] = {}
 
                 for recipient_key in get_recipient_keys(device_signing_key.verify_key.encode(encoder=HexEncoder),
