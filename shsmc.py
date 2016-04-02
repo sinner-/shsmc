@@ -16,6 +16,7 @@ from nacl.public import PublicKey
 from nacl.public import Box
 from nacl.utils import random
 from nacl.secret import SecretBox
+from nacl.exceptions import BadSignatureError
 import nacl.utils
 import pycurl
 import click
@@ -98,11 +99,17 @@ def get_recipient_keys(device_verify_key, enc_signed_destination_username):
     curl.setopt(curl.WRITEFUNCTION, output.write)
     curl.perform()
     recipient_keys = []
+    device_key = get_device_keys(device_verify_key, enc_signed_destination_username)[0]
     try:
-        for key in json.loads(output.getvalue())['device_public_keys']:
-            recipient_keys.append(PublicKey(reconstruct_signed_message(key).message, encoder=HexEncoder))
+        for signed_key in json.loads(output.getvalue())['device_public_keys']:
+            public_key = reconstruct_signed_message(signed_key)
+            device_key.verify(public_key)
+            recipient_keys.append(PublicKey(public_key.message, encoder=HexEncoder))
     except TypeError:
         print "bad recipient key, exiting"
+        exit()
+    except BadSignatureError:
+        print "bad signature, exiting"
         exit()
 
     return recipient_keys
@@ -112,7 +119,7 @@ def get_device_keys(device_verify_key, enc_signed_destination_username):
     data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_username": enc_signed_destination_username})
 
-    url = "%s/api/v1.0/keylist" % serverurl
+    url = "%s/api/v1.0/devicelist" % serverurl
 
     curl = pycurl.Curl()
     curl.setopt(curl.URL, url)
@@ -125,7 +132,7 @@ def get_device_keys(device_verify_key, enc_signed_destination_username):
     recipient_keys = []
     try:
         for key in json.loads(output.getvalue())['device_verify_keys']:
-            recipient_keys.append(VerifyKey(reconstruct_signed_message(key).message, encoder=HexEncoder))
+            recipient_keys.append(VerifyKey(key, encoder=HexEncoder))
     except TypeError:
         print "bad device key, exiting"
         exit()
