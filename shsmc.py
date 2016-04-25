@@ -1,7 +1,8 @@
 #!bin/python
 ''' xxx '''
-import json
-from io import BytesIO
+from urllib2 import build_opener
+from urllib2 import Request
+from urllib2 import HTTPError
 from argparse import ArgumentParser
 from os import path
 from base64 import b64encode
@@ -17,8 +18,8 @@ from nacl.public import Box
 from nacl.utils import random
 from nacl.secret import SecretBox
 from nacl.exceptions import BadSignatureError
+import json
 import nacl.utils
-import pycurl
 import click
 
 def reconstruct_signed_message(signed_message):
@@ -40,68 +41,53 @@ def reconstruct_signed_message(signed_message):
 
     return recon_signed_message
 
+def post(url, parameters):
+    ''' xxx '''
 
+    opener = build_opener()
+    req = Request(url)
+    req.add_header('Content-Type', 'application/json')
+    req.data = parameters
+    response = None
+    try:
+            response = opener.open(req).read()
+    except HTTPError, e:
+            print e.fp.read()
+
+    return response
 
 def register(username, enc_master_verify_key):
     ''' xxx '''
 
     data = json.dumps({"username": username, "master_verify_key": enc_master_verify_key})
-    url = "%s/api/v1.0/user" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    curl.perform()
+    url = "%s/user" % serverurl
+    post(url, data)
 
 def add_device(username, enc_signed_device_verify_key):
 
     data = json.dumps({"username": username,
                        "device_verify_key": enc_signed_device_verify_key})
-
-    url = "%s/api/v1.0/device" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    curl.perform()
+    url = "%s/device" % serverurl
+    post(url, data)
 
 def add_key(enc_signed_device_verify_key, enc_signed_device_public_key):
 
     data = json.dumps({"device_verify_key": enc_signed_device_verify_key,
                        "device_public_key": enc_signed_device_public_key})
-
-    url = "%s/api/v1.0/key" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    curl.perform()
+    url = "%s/key" % serverurl
+    post(url, data)
 
 def get_recipient_keys(device_verify_key, enc_signed_destination_username):
 
     data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_username": enc_signed_destination_username})
 
-    url = "%s/api/v1.0/keylist" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    output = BytesIO()
-    curl.setopt(curl.WRITEFUNCTION, output.write)
-    curl.perform()
+    url = "%s/keylist" % serverurl
+    output = post(url, data)
     recipient_keys = []
     device_key = get_device_keys(device_verify_key, enc_signed_destination_username)[0]
     try:
-        for signed_key in json.loads(output.getvalue())['device_public_keys']:
+        for signed_key in json.loads(output)['device_public_keys']:
             public_key = reconstruct_signed_message(signed_key)
             device_key.verify(public_key)
             recipient_keys.append(PublicKey(public_key.message, encoder=HexEncoder))
@@ -119,25 +105,17 @@ def get_device_keys(device_verify_key, enc_signed_destination_username):
     data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_username": enc_signed_destination_username})
 
-    url = "%s/api/v1.0/devicelist" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    output = BytesIO()
-    curl.setopt(curl.WRITEFUNCTION, output.write)
-    curl.perform()
-    recipient_keys = []
+    url = "%s/devicelist" % serverurl
+    output = post(url, data)
+    device_keys = []
     try:
-        for key in json.loads(output.getvalue())['device_verify_keys']:
-            recipient_keys.append(VerifyKey(key, encoder=HexEncoder))
+        for key in json.loads(output)['device_verify_keys']:
+            device_keys.append(VerifyKey(key, encoder=HexEncoder))
     except TypeError:
         print "bad device key, exiting"
         exit()
 
-    return recipient_keys
+    return device_keys
 
 def send_message(device_verify_key, destination_usernames, message_contents, message_public_key):
 
@@ -145,32 +123,17 @@ def send_message(device_verify_key, destination_usernames, message_contents, mes
                        "destination_usernames": destination_usernames,
                        "message_contents": message_contents,
                        "message_public_key": message_public_key})
+    url = "%s/message" % serverurl
+    post(url, data)
 
-    url = "%s/api/v1.0/message" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    curl.perform()
 
 def get_messages(enc_signed_device_verify_key):
 
     data = json.dumps({"signed_device_verify_key": enc_signed_device_verify_key})
+    url = "%s/messagelist" % serverurl
+    output = post(url, data)
 
-    url = "%s/api/v1.0/messagelist" % serverurl
-
-    curl = pycurl.Curl()
-    curl.setopt(curl.URL, url)
-    curl.setopt(pycurl.HTTPHEADER, ['Content-Type: application/json'])
-    curl.setopt(pycurl.POST, 1)
-    curl.setopt(pycurl.POSTFIELDS, data)
-    output = BytesIO()
-    curl.setopt(curl.WRITEFUNCTION, output.write)
-    curl.perform()
-
-    return json.loads(output.getvalue())
+    return json.loads(output)
 
 def save_key(key, filename):
     key_file = open(filename, 'w')
