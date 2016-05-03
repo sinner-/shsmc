@@ -5,6 +5,8 @@ from urllib2 import Request
 from urllib2 import HTTPError
 from argparse import ArgumentParser
 from os import path
+from os import listdir
+from os import mkdir
 from base64 import b64encode
 from base64 import b64decode
 from nacl.encoding import HexEncoder
@@ -153,8 +155,9 @@ def load_key(filename):
 @click.option('--action', required=True)
 @click.option('--message')
 @click.option('--recipients')
+@click.option('--contact')
 
-def init(server, username, keydir, action, message, recipients):
+def init(server, username, keydir, action, message, recipients, contact):
     ''' SHSM CLI client. '''
 
     global serverurl
@@ -204,6 +207,18 @@ def init(server, username, keydir, action, message, recipients):
             enc_signed_device_public_key = b64encode(device_signing_key.sign(enc_device_public_key))
 
             add_key(enc_device_verify_key, enc_signed_device_public_key)
+
+        if action == "add-contact":
+
+            enc_device_verify_key = device_signing_key.verify_key.encode(encoder=HexEncoder)
+            enc_contact = b64encode(device_signing_key.sign(str(contact)))
+            contact_keys = get_device_keys(enc_device_verify_key, enc_contact)
+            for key in contact_keys:
+                print "Saving contact: " + contact
+                if contact not in listdir(keydir+"/contacts/"):
+                    mkdir(keydir+"/contacts/"+contact)
+                save_key(key.encode(encoder=HexEncoder),
+                         keydir+"/contacts/"+contact+"/"+key.encode(encoder=HexEncoder))
 
         if action == "send-message":
 
