@@ -79,7 +79,10 @@ def add_key(enc_signed_device_verify_key, enc_signed_device_public_key):
     url = "%s/key" % serverurl
     post(url, data)
 
-def get_recipient_keys(device_verify_key, enc_signed_destination_username):
+def get_recipient_keys(keydir, device_signing_key, destination_username):
+
+    device_verify_key = device_signing_key.verify_key.encode(encoder=HexEncoder)
+    enc_signed_destination_username = b64encode(device_signing_key.sign(str(destination_username)))
 
     data = json.dumps({"device_verify_key": device_verify_key,
                        "destination_username": enc_signed_destination_username})
@@ -87,18 +90,25 @@ def get_recipient_keys(device_verify_key, enc_signed_destination_username):
     url = "%s/keylist" % serverurl
     output = post(url, data)
     recipient_keys = []
-    device_key = get_device_keys(device_verify_key, enc_signed_destination_username)[0]
-    try:
-        for signed_key in json.loads(output)['device_public_keys']:
-            public_key = reconstruct_signed_message(signed_key)
-            device_key.verify(public_key)
-            recipient_keys.append(PublicKey(public_key.message, encoder=HexEncoder))
-    except TypeError:
-        print "bad recipient key, exiting"
+    if destination_username not in listdir(keydir+"/contacts"):
+        print "trying to send message to recipient not in contacts list"
         exit()
-    except BadSignatureError:
-        print "bad signature, exiting"
-        exit()
+    else:
+        for key in listdir(keydir+"/contacts/"+destination_username):
+
+            device_key = VerifyKey(load_key(keydir+"/contacts/"+destination_username+"/"+key), encoder=HexEncoder)
+
+            try:
+                for signed_key in json.loads(output)['device_public_keys']:
+                    public_key = reconstruct_signed_message(signed_key)
+                    device_key.verify(public_key)
+                    recipient_keys.append(PublicKey(public_key.message, encoder=HexEncoder))
+            except TypeError:
+                print "bad recipient key, exiting"
+                exit()
+            except BadSignatureError:
+                print "bad signature, exiting"
+                exit()
 
     return recipient_keys
 
@@ -239,21 +249,18 @@ def init(server, username, keydir, action, message, recipients, contact):
             msg_manifest['recipients'] = {}
             msg_manifest['msg'] = b64encode(symmetric_box.encrypt(str(message), nonce))
 
-            for dest_user in destination_usernames:
+            for destination_username in destination_usernames:
 
-                msg_manifest['recipients'][dest_user] = {}
+                msg_manifest['recipients'][destination_username] = {}
 
-                for recipient_key in get_recipient_keys(device_signing_key.verify_key.encode(encoder=HexEncoder),
-                                                        b64encode(
-                                                            device_signing_key.sign(
-                                                                str(dest_user)))):
+                for recipient_key in get_recipient_keys(keydir, device_signing_key, destination_username):
 
                     #TODO:: should sign binary text, no?
                     crypt_box = Box(ephemeral_key, recipient_key)
                     nonce = random(Box.NONCE_SIZE)
                     crypt_key = b64encode(crypt_box.encrypt(symmetric_key, nonce))
                     dest_key = recipient_key.encode(encoder=HexEncoder)
-                    msg_manifest['recipients'][dest_user][dest_key] = crypt_key
+                    msg_manifest['recipients'][destination_username][dest_key] = crypt_key
 
             enc_signed_crypt_msg = b64encode(device_signing_key.sign(json.dumps(msg_manifest)))
 
