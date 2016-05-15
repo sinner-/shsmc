@@ -21,11 +21,53 @@ This repository contains a very crude (STILL IN EARLY DEVELOPMENT) CLI client.
   * `source bin/activate`
   * `pip install -r requirements.txt`
 
-### Standalone client (development only)
-  * (from inside shsmc directory)
-  * `source bin/activate`
-  * `mkdir client_keys`
-  * `bin/python shsmc.py --server "http://localhost:5000/api/v1.0" --username testuser --keydir client_keys --action register`
-  * `bin/python shsmc.py --server "http://localhost:5000/api/v1.0" --username testuser --keydir client_keys --action add-device`
-  * `bin/python shsmc.py --server "http://localhost:5000/api/v1.0" --username testuser --keydir client_keys --action send-message --message "test message foo" --recipients recipient1,recipient2`
-  * `bin/python shsmc.py --server "http://localhost:5000/api/v1.0" --username testuser --keydir client_keys --action get-messages`
+### Basic run example
+```
+rm -rf client1
+rm -rf client2
+rm -rf client3
+mkdir -p client1/contacts
+mkdir -p client2/contacts
+mkdir -p client3/contacts
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action register
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action add-device
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action add-key
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action register
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action add-device
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action add-key
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action register
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action add-device
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action add-key
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action add-contact --contact bob
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action add-contact --contact alice
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action add-contact --contact sina
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action add-contact --contact alice
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action add-contact --contact bob
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action add-contact --contact sina
+
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action send-message --message "hello alice & bob from sina" --recipients alice,bob
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action send-message --message "hello alice & sina from bob" --recipients alice,sina
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action send-message --message "hello bob & sina from alice" --recipients bob,sina
+
+echo "Messages for Sina:"
+echo "-----------------------------"
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username sina --keydir client1 --action get-messages
+echo "-----------------------------"
+
+echo "Messages for Bob:"
+echo "-----------------------------"
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username bob --keydir client2 --action get-messages
+echo "-----------------------------"
+
+
+echo "Messages for Alice:"
+echo "-----------------------------"
+./shsmc.py --server "http://localhost:5000/api/v1.0" --username alice --keydir client3 --action get-messages
+echo "-----------------------------"
+```
