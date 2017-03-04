@@ -1,4 +1,4 @@
-#!bin/python
+#!/usr/bin/env python
 ''' xxx '''
 from urllib2 import build_opener
 from urllib2 import Request
