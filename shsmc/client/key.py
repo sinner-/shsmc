@@ -28,8 +28,7 @@ class Key(object):
                     load_key("%s/device_private_key" % config.key_dir),
                     encoder=HexEncoder)
             except TypeError:
-                print "bad key, exiting"
-                exit()
+                raise TypeError
         else:
             self.device_private_key = PrivateKey.generate()
             save_key(self.device_private_key.encode(encoder=HexEncoder), "%s/device_private_key" % config.key_dir)
@@ -60,8 +59,7 @@ class Key(object):
         recipient_keys = []
 
         if destination_username not in listdir("%s/contacts" % self.config.key_dir):
-            print "trying to send message to recipient not in contacts list"
-            exit()
+            raise Exception("trying to send message to recipient not in contacts list")
         else:
             for key in listdir("%s/contacts/%s" % (self.config.key_dir, destination_username)):
 
@@ -73,10 +71,8 @@ class Key(object):
                         device_key.verify(public_key)
                         recipient_keys.append(PublicKey(public_key.message, encoder=HexEncoder))
                 except TypeError:
-                    print "bad recipient key, exiting"
-                    exit()
+                    raise TypeError
                 except BadSignatureError:
-                    print "bad signature, exiting"
-                    exit()
+                    raise BadSignatureError
 
         return recipient_keys

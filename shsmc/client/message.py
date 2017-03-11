@@ -8,6 +8,7 @@ from nacl.public import PublicKey
 from nacl.public import Box
 from nacl.encoding import HexEncoder
 from nacl.utils import random
+from nacl.exceptions import BadSignatureError
 from shsmc.common.url import post
 
 class Message(object):
@@ -35,7 +36,12 @@ class Message(object):
 
             msg_manifest['recipients'][destination_username] = {}
 
-            for recipient_key in self.key.get_recipient_keys(destination_username):
+            try:
+                recipient_keys = self.key.get_recipient_keys(destination_username)
+            except:
+                raise
+
+            for recipient_key in recipient_keys:
 
                 #TODO:: should sign binary text, no?
                 crypt_box = Box(ephemeral_key, recipient_key)
@@ -60,13 +66,15 @@ class Message(object):
         url = "%s/messagelist" % self.key.config.api_url
         messages = loads(post(url, data))
 
+        decrypted_messages = []
+
         for message_public_key in messages['messages'].keys():
             try:
                 crypto_box = Box(self.key.device_private_key,
                                  PublicKey(b64decode(message_public_key), encoder=HexEncoder))
             except TypeError:
-                print "not a valid public key"
-                exit()
+                raise TypeError
+
             packed_msg = loads(messages['messages'][message_public_key])
             msg_manifest = loads(b64decode(packed_msg['message_manifest']))
             dest_pub_key = self.key.device_private_key.public_key.encode(encoder=HexEncoder)
@@ -74,4 +82,6 @@ class Message(object):
                 b64decode(
                     msg_manifest['recipients'][self.key.config.username][dest_pub_key]))
             symmetric_box = SecretBox(symmetric_key)
-            print ('From: %s\nMessage: %s') % (packed_msg['reply_to'], symmetric_box.decrypt(b64decode(msg_manifest['msg'])))
+            decrypted_messages.append({'from': packed_msg['reply_to'], 'message': symmetric_box.decrypt(b64decode(msg_manifest['msg']))})
+
+        return decrypted_messages

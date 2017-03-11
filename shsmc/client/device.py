@@ -25,8 +25,7 @@ class Device(object):
                     load_key("%s/device_signing_key" % config.key_dir),
                     encoder=HexEncoder)
             except TypeError:
-                print "bad key, exiting"
-                exit()
+                raise TypeError
         else:
             self.device_signing_key = SigningKey.generate()
             save_key(self.device_signing_key.encode(encoder=HexEncoder), "%s/device_signing_key" % config.key_dir)
@@ -60,13 +59,10 @@ class Device(object):
             for key in loads(output)['device_verify_keys']:
                 contact_keys.append(VerifyKey(key, encoder=HexEncoder))
         except TypeError:
-            print "bad device key, exiting"
-            exit()
+            raise TypeError
 
         for key in contact_keys:
-            print "Saving contact: %s" % contact
             if contact not in listdir("%s/contacts/" % self.config.key_dir):
                 mkdir("%s/contacts/%s" % (self.config.key_dir, contact))
             save_key(key.encode(encoder=HexEncoder),
                      "%s/contacts/%s/%s" % (self.config.key_dir, contact, key.encode(encoder=HexEncoder)))
-

@@ -19,8 +19,8 @@ class User(object):
                     load_key("%s/master_signing_key" % config.key_dir),
                     encoder=HexEncoder)
             except TypeError:
-                print "bad key, exiting"
-                exit()
+                raise TypeError
+
         else:
             self.master_signing_key = SigningKey.generate()
             save_key(self.master_signing_key.encode(encoder=HexEncoder), "%s/master_signing_key" % config.key_dir)
