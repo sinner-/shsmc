@@ -1,6 +1,4 @@
-#VirtualEnv
-bin
-lib
-lib64
-include
-share
+.gitignore
+build
+dist
+shsmc.egg-info

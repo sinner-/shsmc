@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 ''' xxx '''
 from urllib2 import build_opener
 from urllib2 import Request
@@ -291,5 +290,5 @@ def init(server, username, keydir, action, message, recipients, contact):
                 symmetric_box = SecretBox(symmetric_key)
                 print ('From: %s\nMessage: %s') % (packed_msg['reply_to'], symmetric_box.decrypt(b64decode(msg_manifest['msg'])))
 
-if __name__ == '__main__':
+def main():
     init()
