@@ -63,7 +63,6 @@ echo "-----------------------------"
 shsmc --configdir sina --action get-messages
 echo "-----------------------------"
 
-
 echo "Messages for Alice:"
 echo "-----------------------------"
 shsmc --configdir alice --action get-messages
