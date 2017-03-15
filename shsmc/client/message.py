@@ -1,7 +1,9 @@
+import traceback
 from json import dumps
 from json import loads
 from base64 import b64encode
 from base64 import b64decode
+from nacl.signing import VerifyKey
 from nacl.secret import SecretBox
 from nacl.public import PrivateKey
 from nacl.public import PublicKey
@@ -10,6 +12,8 @@ from nacl.encoding import HexEncoder
 from nacl.utils import random
 from nacl.exceptions import BadSignatureError
 from shsmc.common.url import post
+from shsmc.common.key import load_key
+from shsmc.common.util import reconstruct_signed_message
 
 class Message(object):
     def __init__(self, key):
@@ -30,6 +34,7 @@ class Message(object):
         nonce = random(SecretBox.NONCE_SIZE)
         msg_manifest = {}
         msg_manifest['recipients'] = {}
+        msg_manifest['sending_device'] = self.key.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8')
         msg_manifest['msg'] = b64encode(symmetric_box.encrypt(str(msg), nonce))
 
         for destination_username in recipients:
@@ -68,15 +73,27 @@ class Message(object):
 
         decrypted_messages = []
 
-        for message_public_key in messages.keys():
+        for message in messages.keys():
+
+            signed_message_public_key = reconstruct_signed_message(message)
+            message_public_key = signed_message_public_key.message
+            packed_msg = loads(messages[message])
+            signed_message_contents = reconstruct_signed_message(packed_msg['message_manifest'])
+            msg_manifest = loads(signed_message_contents.message)
+
+            sender_key = VerifyKey(load_key("%s/contacts/%s/%s" % (self.key.config.key_dir, packed_msg['reply_to'], msg_manifest['sending_device'])), encoder=HexEncoder)
+            try:
+                sender_key.verify(signed_message_public_key)
+                sender_key.verify(signed_message_contents)
+            except BadSignatureError:
+                raise BadSignatureError
+
             try:
                 crypto_box = Box(self.key.device_private_key,
-                                 PublicKey(b64decode(message_public_key), encoder=HexEncoder))
+                                 PublicKey(message_public_key, encoder=HexEncoder))
             except TypeError:
                 raise TypeError
 
-            packed_msg = loads(messages[message_public_key])
-            msg_manifest = loads(b64decode(packed_msg['message_manifest']))
             dest_pub_key = self.key.device_private_key.public_key.encode(encoder=HexEncoder)
             symmetric_key = crypto_box.decrypt(
                 b64decode(

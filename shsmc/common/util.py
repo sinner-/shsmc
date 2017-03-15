@@ -1,10 +1,8 @@
 """ shsmc utility methods
 """
-from binascii import Error as BinasciiError
 from nacl.encoding import Base64Encoder
 from nacl.signing import SignedMessage
 from nacl.bindings import crypto_sign_BYTES
-from flask_restful import abort
 
 def reconstruct_signed_message(signed_message):
     """ hacky method for reconstructing signed messages as
@@ -17,8 +15,7 @@ def reconstruct_signed_message(signed_message):
             tmp_signed_message[:crypto_sign_BYTES],
             tmp_signed_message[crypto_sign_BYTES:],
             tmp_signed_message)
-    except (TypeError, BinasciiError):
-        abort(400,
-              message="The provided signed_message is not valid.")
+    except TypeError:
+        return TypeError
 
     return recon_signed_message
