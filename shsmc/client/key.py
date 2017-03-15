@@ -66,7 +66,7 @@ class Key(object):
                 device_key = VerifyKey(load_key("%s/contacts/%s/%s" % (self.config.key_dir, destination_username, key)), encoder=HexEncoder)
 
                 try:
-                    for signed_key in loads(output)['device_public_keys']:
+                    for signed_key in loads(output):
                         public_key = reconstruct_signed_message(signed_key)
                         device_key.verify(public_key)
                         recipient_keys.append(PublicKey(public_key.message, encoder=HexEncoder))
