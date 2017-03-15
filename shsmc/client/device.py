@@ -56,7 +56,7 @@ class Device(object):
         contact_keys = []
 
         try:
-            for key in loads(output)['device_verify_keys']:
+            for key in loads(output):
                 contact_keys.append(VerifyKey(key, encoder=HexEncoder))
         except TypeError:
             raise TypeError
