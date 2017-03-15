@@ -62,20 +62,20 @@ class Message(object):
 
         device_verify_key = self.key.device_signing_key.verify_key.encode(encoder=HexEncoder)
         enc_signed_device_verify_key = b64encode(self.key.device_signing_key.sign(device_verify_key))
-        data = dumps({"signed_device_verify_key": enc_signed_device_verify_key})
+        data = dumps({"device_verify_key": enc_signed_device_verify_key})
         url = "%s/messagelist" % self.key.config.api_url
         messages = loads(post(url, data))
 
         decrypted_messages = []
 
-        for message_public_key in messages['messages'].keys():
+        for message_public_key in messages.keys():
             try:
                 crypto_box = Box(self.key.device_private_key,
                                  PublicKey(b64decode(message_public_key), encoder=HexEncoder))
             except TypeError:
                 raise TypeError
 
-            packed_msg = loads(messages['messages'][message_public_key])
+            packed_msg = loads(messages[message_public_key])
             msg_manifest = loads(b64decode(packed_msg['message_manifest']))
             dest_pub_key = self.key.device_private_key.public_key.encode(encoder=HexEncoder)
             symmetric_key = crypto_box.decrypt(
