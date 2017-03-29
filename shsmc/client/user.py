@@ -18,7 +18,7 @@ class User(object):
         if exists(key_path):
             try:
                 self.master_signing_key = SigningKey(
-                    load_key("%s/master_signing_key" % config.key_dir),
+                    load_key(key_path),
                     encoder=HexEncoder)
             except TypeError:
                 raise TypeError
@@ -26,8 +26,7 @@ class User(object):
         else:
             self.master_signing_key = SigningKey.generate()
             save_key(
-                self.master_signing_key.encode(encoder=HexEncoder),
-                "%s/master_signing_key" % config.key_dir)
+                self.master_signing_key.encode(encoder=HexEncoder), key_path)
 
     def register(self):
         """ Register username.

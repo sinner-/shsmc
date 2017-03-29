@@ -24,14 +24,13 @@ class Device(object):
         if exists(key_path):
             try:
                 self.device_signing_key = SigningKey(
-                    load_key("%s/device_signing_key" % config.key_dir),
+                    load_key(key_path),
                     encoder=HexEncoder)
             except TypeError:
                 raise TypeError
         else:
             self.device_signing_key = SigningKey.generate()
-            save_key(self.device_signing_key.encode(encoder=HexEncoder),
-                     "%s/device_signing_key" % config.key_dir)
+            save_key(self.device_signing_key.encode(encoder=HexEncoder), key_path)
 
     def add_device(self):
         """ Register device.

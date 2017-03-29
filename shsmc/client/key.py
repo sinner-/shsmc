@@ -26,14 +26,13 @@ class Key(object):
         if exists(key_path):
             try:
                 self.device_private_key = PrivateKey(
-                    load_key("%s/device_private_key" % config.key_dir),
+                    load_key(key_path),
                     encoder=HexEncoder)
             except TypeError:
                 raise TypeError
         else:
             self.device_private_key = PrivateKey.generate()
-            save_key(self.device_private_key.encode(encoder=HexEncoder),
-                     "%s/device_private_key" % config.key_dir)
+            save_key(self.device_private_key.encode(encoder=HexEncoder), key_path)
 
 
     def add_key(self):
