@@ -19,19 +19,19 @@ def main(configdir, action, msg, recipients, contact):
     try:
         user = User(config)
     except TypeError:
-        print "bad master_verify_key, exiting"
+        print("bad master_verify_key, exiting")
         exit()
 
     try:
         device = Device(config, user.master_signing_key)
     except TypeError:
-        print "bad device_verify_key, exiting"
+        print("bad device_verify_key, exiting")
         exit()
 
     try:
         key = Key(config, device.device_signing_key)
     except TypeError:
-        print "bad device_private_key, exiting"
+        print("bad device_private_key, exiting")
         exit()
 
     message = Message(key)
@@ -46,21 +46,18 @@ def main(configdir, action, msg, recipients, contact):
         try:
             device.get_device_keys(contact)
         except TypeError:
-            print "returned device keys are bad, exiting"
+            print("returned device keys are bad, exiting")
             exit()
     if action == "send-message":
         try:
             message.send_message(recipients.split(","), msg)
         except:
-            print "error sending message or getting recipient keys"
+            print("error sending message or getting recipient keys")
             exit()
     if action == "get-messages":
         try:
-
             for message in message.get_messages():
-
-                print ("From: %s\nMessage: %s\n" % (message['from'], message['message']))
-
+                print("From: %s\nMessage: %s\n" % (message['from'], message['message']))
         except TypeError:
-            print "message public key is not valid"
+            print("message public key is not valid")
             exit()

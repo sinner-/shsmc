@@ -12,12 +12,12 @@ This repository contains a very crude (STILL IN EARLY DEVELOPMENT) CLI client.
 
 ### Install necessary OS packages:
   * Fedora:
-    * `dnf install redhat-rpm-config python2-devel curl-devel libsodium-devel python-virtualenvwrapper`
+    * `dnf install redhat-rpm-config python3-devel python-virtualenvwrapper`
   
-### Python setup
+### Python setup (Python >=3.5 ONLY)
   * `git clone https://github.com/sinner-/shsmc`
   * `cd shsmc`
-  * `mkvirtualenv shsmc`
+  * `mkvirtualenv -p python3.5 shsmc`
   * `python setup.py install`
 
 ### Basic run example

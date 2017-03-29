@@ -1,8 +1,4 @@
-""" shsmd
-"""
-
-import ConfigParser
-import click
+import configparser
 
 class Configuration:
     """ Configuration class for shsmd.
@@ -17,7 +13,7 @@ class Configuration:
 
         """
 
-        config = ConfigParser.RawConfigParser()
+        config = configparser.RawConfigParser()
         config.read(path)
 
         self.debug = config.getboolean('general', 'debug')

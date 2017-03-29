@@ -14,9 +14,10 @@ from shsmc.common.key import save_key
 from shsmc.common.util import reconstruct_signed_message
 
 class Key(object):
+    """ Client class for registering message keys and fetching message keys for a username.
+    """
 
     def __init__(self, config, device_signing_key):
-
         self.config = config
         self.device_signing_key = device_signing_key
 
@@ -31,39 +32,45 @@ class Key(object):
                 raise TypeError
         else:
             self.device_private_key = PrivateKey.generate()
-            save_key(self.device_private_key.encode(encoder=HexEncoder), "%s/device_private_key" % config.key_dir)
+            save_key(self.device_private_key.encode(encoder=HexEncoder),
+                     "%s/device_private_key" % config.key_dir)
 
 
     def add_key(self):
+        """ Register message key.
+        """
 
-        enc_device_verify_key = self.device_signing_key.verify_key.encode(encoder=HexEncoder)
+        device_verify_key = self.device_signing_key.verify_key.encode(encoder=HexEncoder)
+        device_public_key = self.device_private_key.public_key.encode(encoder=HexEncoder)
 
-        enc_device_public_key = self.device_private_key.public_key.encode(encoder=HexEncoder)
-
-        enc_signed_device_public_key = b64encode(self.device_signing_key.sign(enc_device_public_key))
-        data = dumps({"device_verify_key": enc_device_verify_key,
-                      "device_public_key": enc_signed_device_public_key})
+        data = dumps({"device_verify_key": device_verify_key.decode('utf-8'),
+                      "device_public_key": b64encode(
+                          self.device_signing_key.sign(device_public_key)).decode('utf-8')})
         url = "%s/key" % self.config.api_url
         post(url, data)
 
-    def get_recipient_keys(self, destination_username):
+    def get_recipient_keys(self, username):
+        """ Get message keys for a user.
+        """
 
         device_verify_key = self.device_signing_key.verify_key.encode(encoder=HexEncoder)
-        enc_signed_destination_username = b64encode(self.device_signing_key.sign(str(destination_username)))
 
-        data = dumps({"device_verify_key": device_verify_key,
-                           "destination_username": enc_signed_destination_username})
+        data = dumps({"device_verify_key": device_verify_key.decode('utf-8'),
+                      "destination_username": b64encode(
+                          self.device_signing_key.sign(username.encode())).decode('utf-8')})
 
         url = "%s/keylist" % self.config.api_url
         output = post(url, data)
         recipient_keys = []
 
-        if destination_username not in listdir("%s/contacts" % self.config.key_dir):
+        if username not in listdir("%s/contacts" % self.config.key_dir):
             raise Exception("trying to send message to recipient not in contacts list")
         else:
-            for key in listdir("%s/contacts/%s" % (self.config.key_dir, destination_username)):
+            for key in listdir("%s/contacts/%s/devices" % (self.config.key_dir, username)):
 
-                device_key = VerifyKey(load_key("%s/contacts/%s/%s" % (self.config.key_dir, destination_username, key)), encoder=HexEncoder)
+                device_key = VerifyKey(
+                    load_key("%s/contacts/%s/devices/%s" %
+                             (self.config.key_dir, username, key)), encoder=HexEncoder)
 
                 try:
                     for signed_key in loads(output):

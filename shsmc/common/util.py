@@ -1,5 +1,3 @@
-""" shsmc utility methods
-"""
 from nacl.encoding import Base64Encoder
 from nacl.signing import SignedMessage
 from nacl.bindings import crypto_sign_BYTES

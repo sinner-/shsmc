@@ -12,6 +12,8 @@ from shsmc.common.key import load_key
 from shsmc.common.key import save_key
 
 class Device(object):
+    """ Client class for registering devices and fetching the device keys for a username.
+    """
 
     def __init__(self, config, master_signing_key):
         self.config = config
@@ -28,28 +30,32 @@ class Device(object):
                 raise TypeError
         else:
             self.device_signing_key = SigningKey.generate()
-            save_key(self.device_signing_key.encode(encoder=HexEncoder), "%s/device_signing_key" % config.key_dir)
-
+            save_key(self.device_signing_key.encode(encoder=HexEncoder),
+                     "%s/device_signing_key" % config.key_dir)
 
     def add_device(self):
-        """ 
+        """ Register device.
         """
 
-        enc_device_verify_key = self.device_signing_key.verify_key.encode(encoder=HexEncoder)
-        enc_signed_device_verify_key = b64encode(self.master_signing_key.sign(enc_device_verify_key))
+        device_verify_key = b64encode(
+            self.master_signing_key.sign(
+                self.device_signing_key.verify_key.encode(encoder=HexEncoder)))
+
         data = dumps({"username": self.config.username,
-                           "device_verify_key": enc_signed_device_verify_key})
+                      "device_verify_key": device_verify_key.decode('utf-8')})
         url = "%s/device" % self.config.api_url
         post(url, data)
 
-    def get_device_keys(self, contact):
+    def get_device_keys(self, username):
+        """ Get device keys for a user.
+        """
 
-        enc_contact = b64encode(self.device_signing_key.sign(str(contact)))
+        enc_username = b64encode(self.device_signing_key.sign(username.encode()))
 
         device_verify_key = self.device_signing_key.verify_key.encode(encoder=HexEncoder)
 
-        data = dumps({"device_verify_key": device_verify_key,
-                      "destination_username": enc_contact})
+        data = dumps({"device_verify_key": device_verify_key.decode('utf-8'),
+                      "destination_username": enc_username.decode('utf-8')})
 
         url = "%s/devicelist" % self.config.api_url
         output = post(url, data)
@@ -57,12 +63,15 @@ class Device(object):
 
         try:
             for key in loads(output):
-                contact_keys.append(VerifyKey(key, encoder=HexEncoder))
+                contact_keys.append(VerifyKey(key.encode(), encoder=HexEncoder))
         except TypeError:
             raise TypeError
 
         for key in contact_keys:
-            if contact not in listdir("%s/contacts/" % self.config.key_dir):
-                mkdir("%s/contacts/%s" % (self.config.key_dir, contact))
+            if username not in listdir("%s/contacts/" % self.config.key_dir):
+                mkdir("%s/contacts/%s" % (self.config.key_dir, username))
+                mkdir("%s/contacts/%s/devices" % (self.config.key_dir, username))
             save_key(key.encode(encoder=HexEncoder),
-                     "%s/contacts/%s/%s" % (self.config.key_dir, contact, key.encode(encoder=HexEncoder)))
+                     "%s/contacts/%s/devices/%s" % (self.config.key_dir,
+                                                    username,
+                                                    key.encode(encoder=HexEncoder).decode('utf-8')))
