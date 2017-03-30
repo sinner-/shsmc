@@ -13,6 +13,7 @@ from nacl.encoding import HexEncoder
 from nacl.utils import random
 from nacl.exceptions import BadSignatureError
 from shsmc.common.key import load_key
+from shsmc.common.key import save_key
 from shsmc.common.util import reconstruct_signed_message
 
 class Message(object):
@@ -88,9 +89,9 @@ class Message(object):
 
             sender_key = VerifyKey(
                 load_key(
-                    "%s/contacts/%s/devices/%s" % (self.key.config.key_dir,
-                                                   packed_msg['reply_to'],
-                                                   msg_manifest['device'])), encoder=HexEncoder)
+                    "%s/contacts/%s/devices/%s/device_verify_key" % (self.key.config.key_dir,
+                                                                     packed_msg['reply_to'],
+                                                                     msg_manifest['device'])), encoder=HexEncoder)
             try:
                 sender_key.verify(signed_message_public_key)
                 sender_key.verify(signed_message_contents)
@@ -102,6 +103,11 @@ class Message(object):
                                  PublicKey(message_public_key, encoder=HexEncoder))
             except TypeError:
                 raise TypeError
+
+            save_key(message_public_key,
+                     "%s/contacts/%s/devices/%s/ephemeral_key" % (self.key.config.key_dir,
+                                                                  packed_msg['reply_to'],
+                                                                  msg_manifest['device']))
 
             dest_pub_key = self.key.device_private_key.public_key.encode(encoder=HexEncoder)
             symmetric_key = crypto_box.decrypt(

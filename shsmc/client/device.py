@@ -68,7 +68,8 @@ class Device(object):
             if username not in listdir("%s/contacts/" % self.config.key_dir):
                 mkdir("%s/contacts/%s" % (self.config.key_dir, username))
                 mkdir("%s/contacts/%s/devices" % (self.config.key_dir, username))
+                mkdir("%s/contacts/%s/devices/%s" % (self.config.key_dir, username, key.encode(encoder=HexEncoder).decode('utf-8')))
             save_key(key.encode(encoder=HexEncoder),
-                     "%s/contacts/%s/devices/%s" % (self.config.key_dir,
-                                                    username,
-                                                    key.encode(encoder=HexEncoder).decode('utf-8')))
+                     "%s/contacts/%s/devices/%s/device_verify_key" % (self.config.key_dir,
+                                                                      username,
+                                                                      key.encode(encoder=HexEncoder).decode('utf-8')))

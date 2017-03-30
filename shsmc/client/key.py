@@ -72,7 +72,7 @@ class Key(object):
             for key in listdir("%s/contacts/%s/devices" % (self.config.key_dir, username)):
 
                 device_key = VerifyKey(
-                    load_key("%s/contacts/%s/devices/%s" %
+                    load_key("%s/contacts/%s/devices/%s/device_verify_key" %
                              (self.config.key_dir, username, key)), encoder=HexEncoder)
 
                 try:
