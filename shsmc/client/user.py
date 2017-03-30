@@ -1,8 +1,8 @@
 from os.path import exists
 from json import dumps
+from requests import put
 from nacl.signing import SigningKey
 from nacl.encoding import HexEncoder
-from shsmc.common.url import post
 from shsmc.common.key import load_key
 from shsmc.common.key import save_key
 
@@ -33,7 +33,7 @@ class User(object):
         """
 
         master_verify_key = self.master_signing_key.verify_key.encode(encoder=HexEncoder)
-        data = dumps({"username": self.config.username,
-                      "master_verify_key": master_verify_key.decode('utf-8')})
-        url = "%s/user" % self.config.api_url
-        post(url, data)
+        data = {"master_verify_key": master_verify_key.decode('utf-8')}
+        url = "%s/users/%s" % (self.config.api_url, self.config.username)
+        resp = put(url, data=data)
+        print(resp.text)

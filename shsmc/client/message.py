@@ -2,6 +2,8 @@ from json import dumps
 from json import loads
 from base64 import b64encode
 from base64 import b64decode
+from requests import post
+from requests import get
 from nacl.signing import VerifyKey
 from nacl.secret import SecretBox
 from nacl.public import PrivateKey
@@ -10,7 +12,6 @@ from nacl.public import Box
 from nacl.encoding import HexEncoder
 from nacl.utils import random
 from nacl.exceptions import BadSignatureError
-from shsmc.common.url import post
 from shsmc.common.key import load_key
 from shsmc.common.util import reconstruct_signed_message
 
@@ -49,18 +50,18 @@ class Message(object):
                         symmetric_key, random(Box.NONCE_SIZE))).decode('utf-8')
 
         device_verify_key = self.key.device_signing_key.verify_key.encode(encoder=HexEncoder)
-        data = dumps({"device_verify_key": device_verify_key.decode('utf-8'),
-                      "destination_usernames": b64encode(
-                          self.key.device_signing_key.sign(
-                              dumps(recipients).encode())).decode('utf-8'),
-                      "message_contents": b64encode(
-                          self.key.device_signing_key.sign(
-                              dumps(msg_manifest).encode())).decode('utf-8'),
-                      "message_public_key": b64encode(
-                          self.key.device_signing_key.sign(
-                              ephemeral_key.public_key.encode(encoder=HexEncoder))).decode('utf-8')})
+        data = {"device_verify_key": device_verify_key.decode('utf-8'),
+                "destination_usernames": b64encode(
+                    self.key.device_signing_key.sign(
+                        dumps(recipients).encode())).decode('utf-8'),
+                "message_contents": b64encode(
+                    self.key.device_signing_key.sign(
+                        dumps(msg_manifest).encode())).decode('utf-8'),
+                "message_public_key": b64encode(
+                    self.key.device_signing_key.sign(
+                        ephemeral_key.public_key.encode(encoder=HexEncoder))).decode('utf-8')}
 
-        post("%s/message" % self.key.config.api_url, data)
+        post("%s/message" % self.key.config.api_url, data=data)
 
     def get_messages(self):
         """ Get all messages for this device.
@@ -70,8 +71,10 @@ class Message(object):
             self.key.device_signing_key.sign(
                 self.key.device_signing_key.verify_key.encode(encoder=HexEncoder)))
         messages = loads(
-            post("%s/messagelist" % self.key.config.api_url,
-                 dumps({"device_verify_key": device_verify_key.decode('utf-8')})))
+            get("%s/users/%s/devices/%s/messages" % (self.key.config.api_url,
+                                                     self.key.config.username,
+                                                     self.key.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8')),
+                 headers={"device_verify_key": device_verify_key.decode('utf-8')}).text)
 
         decrypted_messages = []
 

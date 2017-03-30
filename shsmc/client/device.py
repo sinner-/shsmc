@@ -3,11 +3,12 @@ from os import listdir
 from os import mkdir
 from json import dumps
 from json import loads
+from requests import put
+from requests import get
 from base64 import b64encode
 from nacl.signing import VerifyKey
 from nacl.signing import SigningKey
 from nacl.encoding import HexEncoder
-from shsmc.common.url import post
 from shsmc.common.key import load_key
 from shsmc.common.key import save_key
 
@@ -40,28 +41,25 @@ class Device(object):
             self.master_signing_key.sign(
                 self.device_signing_key.verify_key.encode(encoder=HexEncoder)))
 
-        data = dumps({"username": self.config.username,
-                      "device_verify_key": device_verify_key.decode('utf-8')})
-        url = "%s/device" % self.config.api_url
-        post(url, data)
+        data={"device_verify_key": device_verify_key.decode('utf-8')}
+        url = "%s/users/%s/devices/%s" % (self.config.api_url,
+                                          self.config.username,
+                                          self.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8'))
+        resp = put(url, data=data)
+        print(resp.text)
 
     def get_device_keys(self, username):
         """ Get device keys for a user.
         """
 
-        enc_username = b64encode(self.device_signing_key.sign(username.encode()))
+        device_verify_key = b64encode(self.device_signing_key.sign(self.device_signing_key.verify_key.encode(encoder=HexEncoder)))
 
-        device_verify_key = self.device_signing_key.verify_key.encode(encoder=HexEncoder)
-
-        data = dumps({"device_verify_key": device_verify_key.decode('utf-8'),
-                      "destination_username": enc_username.decode('utf-8')})
-
-        url = "%s/devicelist" % self.config.api_url
-        output = post(url, data)
+        url = "%s/users/%s/devices" % (self.config.api_url, username)
+        resp = get(url, headers={"device_verify_key": device_verify_key.decode('utf-8')})
         contact_keys = []
 
         try:
-            for key in loads(output):
+            for key in loads(resp.text):
                 contact_keys.append(VerifyKey(key.encode(), encoder=HexEncoder))
         except TypeError:
             raise TypeError
