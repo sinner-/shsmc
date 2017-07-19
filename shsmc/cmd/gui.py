@@ -1,5 +1,6 @@
 import click
 import sys
+import time
 from os import listdir
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QLabel, QListWidget, QTextEdit, QPushButton
 from shsmc.common.config import Configuration
@@ -9,12 +10,32 @@ from shsmc.client.key import Key
 from shsmc.client.message import Message
 
 class Gui(QMainWindow):
-    def __init__(self, config):
+    def __init__(self, configdir):
         super().__init__()
         self._title = 'shsmc'
         self._width = 640
         self._height = 480
-        self._config = config
+
+        self._config = Configuration("%s/config.ini" % configdir)
+        try:
+            self._user = User(self._config)
+        except TypeError:
+            print("bad master_verify_key, exiting")
+            exit(1)
+
+        try:
+            self._device = Device(self._config, self._user.master_signing_key)
+        except TypeError:
+            print("bad device_verify_key, exiting")
+            exit(1)
+
+        try:
+            self._key = Key(self._config, self._device.device_signing_key)
+        except TypeError:
+            print("bad device_private_key, exiting")
+            exit(1)
+
+        self._message = Message(self._key)
         self._initUI()
 
     def _initUI(self):
@@ -37,35 +58,22 @@ class Gui(QMainWindow):
 
         self._sendmsg_button = QPushButton('Send Message', self)
         self._sendmsg_button.move((self._width/4)*3, (self._height/4)*3)
-
         self.show()
+
+        messages = ""
+
+        for message in self._message.get_messages():
+            messages += "From: %s\nMessage: %s\n" % (message['from'], message['message'])
+
+        self._message_textbox.setText(messages)
+
 
 @click.command()
 @click.option('--configdir', required=True)
 def main(configdir):
     ''' SHSM GUI Client.
     '''
-    config = Configuration("%s/config.ini" % configdir)
-    try:
-        user = User(config)
-    except TypeError:
-        print("bad master_verify_key, exiting")
-        exit()
-
-    try:
-        device = Device(config, user.master_signing_key)
-    except TypeError:
-        print("bad device_verify_key, exiting")
-        exit()
-
-    try:
-        key = Key(config, device.device_signing_key)
-    except TypeError:
-        print("bad device_private_key, exiting")
-        exit()
-
-    message = Message(key)
 
     app = QApplication(sys.argv)
-    gui = Gui(config)
+    gui = Gui(configdir)
     sys.exit(app.exec_())
