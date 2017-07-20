@@ -10,30 +10,37 @@ class User(object):
     """ Client class for registering a username.
     """
 
-    def __init__(self, config):
-        self.config = config
-
-        key_path = "%s/master_signing_key" % config.key_dir
+    def __init__(self):
+        key_path = "%s/master_signing_key" % CONF.key_dir
 
         if exists(key_path):
             try:
                 self.master_signing_key = SigningKey(
                     load_key(key_path),
-                    encoder=HexEncoder)
+                    encoder=HexEncoder
+                )
             except TypeError:
-                raise TypeError
+                print("Invalid master_signing_key file.")
+                exit(1)
 
         else:
             self.master_signing_key = SigningKey.generate()
             save_key(
-                self.master_signing_key.encode(encoder=HexEncoder), key_path)
+                self.master_signing_key.encode(encoder=HexEncoder),
+                key_path
+            )
 
     def register(self):
         """ Register username.
         """
 
         master_verify_key = self.master_signing_key.verify_key.encode(encoder=HexEncoder)
-        data = {"master_verify_key": master_verify_key.decode('utf-8')}
-        url = "%s/users/%s" % (self.config.api_url, self.config.username)
+        data = {
+            "master_verify_key": master_verify_key.decode('utf-8')
+        }
+        url = "%s/users/%s" % (
+            CONF.api_url,
+            CONF.username
+        )
         resp = put(url, data=data)
         print(resp.text)

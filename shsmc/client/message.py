@@ -15,6 +15,7 @@ from nacl.exceptions import BadSignatureError
 from shsmc.common.key import load_key
 from shsmc.common.key import save_key
 from shsmc.common.util import reconstruct_signed_message
+from shsmc.common.config import CONF
 
 class Message(object):
     """ Client class for sending and receiving messages.
@@ -33,7 +34,8 @@ class Message(object):
         msg_manifest['recipients'] = {}
         msg_manifest['device'] = self.key.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8')
         msg_manifest['msg'] = b64encode(
-            SecretBox(symmetric_key).encrypt(msg.encode(), random(Box.NONCE_SIZE))).decode('utf-8')
+            SecretBox(symmetric_key).encrypt(msg.encode(), random(Box.NONCE_SIZE))
+        ).decode('utf-8')
 
         for recipient in recipients:
 
@@ -48,21 +50,32 @@ class Message(object):
                 dest_key = recipient_key.encode(encoder=HexEncoder)
                 msg_manifest['recipients'][recipient][dest_key.decode('utf-8')] = b64encode(
                     Box(ephemeral_key, recipient_key).encrypt(
-                        symmetric_key, random(Box.NONCE_SIZE))).decode('utf-8')
+                        symmetric_key,
+                        random(Box.NONCE_SIZE)
+                    )
+                ).decode('utf-8')
 
         device_verify_key = self.key.device_signing_key.verify_key.encode(encoder=HexEncoder)
-        data = {"device_verify_key": device_verify_key.decode('utf-8'),
-                "destination_usernames": b64encode(
-                    self.key.device_signing_key.sign(
-                        dumps(recipients).encode())).decode('utf-8'),
-                "message_contents": b64encode(
-                    self.key.device_signing_key.sign(
-                        dumps(msg_manifest).encode())).decode('utf-8'),
-                "message_public_key": b64encode(
-                    self.key.device_signing_key.sign(
-                        ephemeral_key.public_key.encode(encoder=HexEncoder))).decode('utf-8')}
+        data = {
+            "device_verify_key": device_verify_key.decode('utf-8'),
+            "destination_usernames": b64encode(
+                self.key.device_signing_key.sign(
+                    dumps(recipients).encode()
+                )
+            ).decode('utf-8'),
+            "message_contents": b64encode(
+                self.key.device_signing_key.sign(
+                    dumps(msg_manifest).encode()
+                )
+            ).decode('utf-8'),
+            "message_public_key": b64encode(
+                self.key.device_signing_key.sign(
+                    ephemeral_key.public_key.encode(encoder=HexEncoder)
+                )
+            ).decode('utf-8')
+        }
 
-        post("%s/message" % self.key.config.api_url, data=data)
+        post("%s/message" % CONF.api_url, data=data)
 
     def get_messages(self):
         """ Get all messages for this device.
@@ -70,12 +83,19 @@ class Message(object):
 
         device_verify_key = b64encode(
             self.key.device_signing_key.sign(
-                self.key.device_signing_key.verify_key.encode(encoder=HexEncoder)))
+                self.key.device_signing_key.verify_key.encode(encoder=HexEncoder)
+            )
+        )
         messages = loads(
-            get("%s/users/%s/devices/%s/messages" % (self.key.config.api_url,
-                                                     self.key.config.username,
-                                                     self.key.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8')),
-                 headers={"device_verify_key": device_verify_key.decode('utf-8')}).text)
+            get(
+                "%s/users/%s/devices/%s/messages" % (
+                    CONF.api_url,
+                    CONF.username,
+                    self.key.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8')
+                ),
+                headers={"device_verify_key": device_verify_key.decode('utf-8')}
+            ).text
+        )
 
         decrypted_messages = []
 
@@ -89,9 +109,14 @@ class Message(object):
 
             sender_key = VerifyKey(
                 load_key(
-                    "%s/contacts/%s/devices/%s/device_verify_key" % (self.key.config.key_dir,
-                                                                     packed_msg['reply_to'],
-                                                                     msg_manifest['device'])), encoder=HexEncoder)
+                    "%s/contacts/%s/devices/%s/device_verify_key" % (
+                        CONF.key_dir,
+                        packed_msg['reply_to'],
+                        msg_manifest['device']
+                    )
+                ),
+                encoder=HexEncoder
+            )
             try:
                 sender_key.verify(signed_message_public_key)
                 sender_key.verify(signed_message_contents)
@@ -104,18 +129,29 @@ class Message(object):
             except TypeError:
                 raise TypeError
 
-            save_key(message_public_key,
-                     "%s/contacts/%s/devices/%s/ephemeral_key" % (self.key.config.key_dir,
-                                                                  packed_msg['reply_to'],
-                                                                  msg_manifest['device']))
+            save_key(
+                message_public_key,
+                "%s/contacts/%s/devices/%s/ephemeral_key" % (
+                    CONF.key_dir,
+                    packed_msg['reply_to'],
+                    msg_manifest['device']
+                )
+            )
 
             dest_pub_key = self.key.device_private_key.public_key.encode(encoder=HexEncoder)
             symmetric_key = crypto_box.decrypt(
                 b64decode(
-                    msg_manifest['recipients'][self.key.config.username][dest_pub_key.decode('utf-8')]))
+                    msg_manifest['recipients'][CONF.username][dest_pub_key.decode('utf-8')]
+                )
+            )
             symmetric_box = SecretBox(symmetric_key)
-            decrypted_messages.append({'from': packed_msg['reply_to'],
-                                       'message': symmetric_box.decrypt(
-                                           b64decode(msg_manifest['msg'])).decode('utf-8')})
+            decrypted_messages.append(
+                {
+                    'from': packed_msg['reply_to'],
+                    'message': symmetric_box.decrypt(
+                        b64decode(msg_manifest['msg'])
+                    ).decode('utf-8')
+                }
+            )
 
         return decrypted_messages

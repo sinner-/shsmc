@@ -1,9 +1,11 @@
 import click
-from shsmc.common.config import Configuration
 from shsmc.client.user import User
 from shsmc.client.device import Device
 from shsmc.client.key import Key
 from shsmc.client.message import Message
+from shsmc.common.config import Configuration
+
+CONF = None
 
 @click.command()
 @click.option('--configdir', required=True)
@@ -15,25 +17,11 @@ def main(configdir, action, msg, recipients, contact):
     ''' SHSM CLI client.
     '''
 
-    config = Configuration("%s/config.ini" % configdir)
-    try:
-        user = User(config)
-    except TypeError:
-        print("bad master_verify_key, exiting")
-        exit()
+    CONF = Configuration(configdir)
 
-    try:
-        device = Device(config, user.master_signing_key)
-    except TypeError:
-        print("bad device_verify_key, exiting")
-        exit()
-
-    try:
-        key = Key(config, device.device_signing_key)
-    except TypeError:
-        print("bad device_private_key, exiting")
-        exit()
-
+    user = User()
+    device = Device(user.master_signing_key)
+    key = Key(device.device_signing_key)
     message = Message(key)
 
     if action == "register":
@@ -43,11 +31,7 @@ def main(configdir, action, msg, recipients, contact):
     if action == "add-key":
         key.add_key()
     if action == "add-contact":
-        try:
-            device.get_device_keys(contact)
-        except TypeError:
-            print("returned device keys are bad, exiting")
-            exit()
+        device.get_device_keys(contact)
     if action == "send-message":
         try:
             message.send_message(recipients.split(","), msg)
