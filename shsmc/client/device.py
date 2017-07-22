@@ -11,16 +11,16 @@ from nacl.signing import SigningKey
 from nacl.encoding import HexEncoder
 from shsmc.common.key import load_key
 from shsmc.common.key import save_key
-from shsmd.common.config import CONF
 
 class Device(object):
     """ Client class for registering devices and fetching the device keys for a username.
     """
 
-    def __init__(self, master_signing_key):
+    def __init__(self, config, master_signing_key):
+        self._config = config
         self.master_signing_key = master_signing_key
 
-        key_path = "%s/device_signing_key" % CONF.key_dir
+        key_path = "%s/device_signing_key" % self._config.key_dir
 
         if exists(key_path):
             try:
@@ -51,8 +51,8 @@ class Device(object):
             "device_verify_key": device_verify_key.decode('utf-8')
         }
         url = "%s/users/%s/devices/%s" % (
-            CONF.api_url,
-            CONF.username,
+            self._config.api_url,
+            self._config.username,
             self.device_signing_key.verify_key.encode(encoder=HexEncoder).decode('utf-8')
         )
         resp = put(url, data=data)
@@ -68,7 +68,7 @@ class Device(object):
             )
         )
 
-        url = "%s/users/%s/devices" % (CONF.api_url, username)
+        url = "%s/users/%s/devices" % (self._config.api_url, username)
         try:
             resp = get(
                 url, headers={
@@ -91,18 +91,18 @@ class Device(object):
             raise
 
         for key in contact_keys:
-            if username not in listdir("%s/contacts/" % CONF.key_dir):
-                mkdir("%s/contacts/%s" % (CONF.key_dir, username))
-                mkdir("%s/contacts/%s/devices" % (CONF.key_dir, username))
+            if username not in listdir("%s/contacts/" % self._config.key_dir):
+                mkdir("%s/contacts/%s" % (self._config.key_dir, username))
+                mkdir("%s/contacts/%s/devices" % (self._config.key_dir, username))
                 mkdir("%s/contacts/%s/devices/%s" % (
-                    CONF.key_dir,
+                    self._config.key_dir,
                     username,
                     key.encode(encoder=HexEncoder).decode('utf-8'))
                 )
 
             save_key(key.encode(encoder=HexEncoder),
                 "%s/contacts/%s/devices/%s/device_verify_key" % (
-                    CONF.key_dir,
+                    self._config.key_dir,
                     username,
                     key.encode(encoder=HexEncoder).decode('utf-8'))
             )

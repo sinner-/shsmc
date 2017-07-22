@@ -1,4 +1,5 @@
 import configparser
+import click
 
 class Configuration:
     """ Configuration class for shsmd.
@@ -8,13 +9,13 @@ class Configuration:
             debug (boolean): Toggle to enable debug.
     """
 
-    def __init__(self, path):
+    def __init__(self, configdir):
         """ Configuration class initialisation.
 
         """
 
         config = configparser.RawConfigParser()
-        config.read(path)
+        config.read(configdir)
 
         self.debug = config.getboolean('general', 'debug')
         self.api_url = config.get('general', 'api_url')

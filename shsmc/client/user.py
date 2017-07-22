@@ -10,8 +10,9 @@ class User(object):
     """ Client class for registering a username.
     """
 
-    def __init__(self):
-        key_path = "%s/master_signing_key" % CONF.key_dir
+    def __init__(self, config):
+        self._config = config
+        key_path = "%s/master_signing_key" % self._config.key_dir
 
         if exists(key_path):
             try:
@@ -39,8 +40,8 @@ class User(object):
             "master_verify_key": master_verify_key.decode('utf-8')
         }
         url = "%s/users/%s" % (
-            CONF.api_url,
-            CONF.username
+            self._config.api_url,
+            self._config.username
         )
         resp = put(url, data=data)
         print(resp.text)

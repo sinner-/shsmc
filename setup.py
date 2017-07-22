@@ -10,7 +10,6 @@ setup(
     author='Sina Sadeghi',
     install_requires=[
         'requests>=2.13.0',
-        'Click>=6.7',
         'PyQt5>=5.9',
         'PyNaCl>=1.1.2'
     ],

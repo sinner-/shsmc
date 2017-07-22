@@ -13,16 +13,16 @@ from nacl.exceptions import BadSignatureError
 from shsmc.common.key import load_key
 from shsmc.common.key import save_key
 from shsmc.common.util import reconstruct_signed_message
-from shsmc.common.config import CONF
 
 class Key(object):
     """ Client class for registering message keys and fetching message keys for a username.
     """
 
-    def __init__(self, device_signing_key):
+    def __init__(self, config, device_signing_key):
+        self._config = config
         self.device_signing_key = device_signing_key
 
-        key_path = "%s/device_private_key" % CONF.key_dir
+        key_path = "%s/device_private_key" % self._config.key_dir
 
         if exists(key_path):
             try:
@@ -54,8 +54,8 @@ class Key(object):
                 ).decode('utf-8')
             }
         url = "%s/users/%s/keys/%s" % (
-            CONF.api_url,
-            CONF.username,
+            self._config.api_url,
+            self._config.username,
             device_public_key.decode('utf-8')
         )
         resp = put(url, headers=headers, data=data)
@@ -80,7 +80,7 @@ class Key(object):
             }
         )
 
-        url = "%s/users/%s/keys" % (CONF.api_url, username)
+        url = "%s/users/%s/keys" % (self._config.api_url, username)
         resp = get(
             url,
             headers = {
@@ -89,16 +89,16 @@ class Key(object):
         )
         recipient_keys = []
 
-        if username not in listdir("%s/contacts" % CONF.key_dir):
+        if username not in listdir("%s/contacts" % self._config.key_dir):
             raise Exception("trying to send message to recipient not in contacts list")
             return recipient_keys
 
-        for key in listdir("%s/contacts/%s/devices" % (CONF.key_dir, username)):
+        for key in listdir("%s/contacts/%s/devices" % (self._config.key_dir, username)):
 
             device_key = VerifyKey(
                 load_key(
                     "%s/contacts/%s/devices/%s/device_verify_key" % (
-                        CONF.key_dir,
+                        self._config.key_dir,
                         username,
                         key
                     )
